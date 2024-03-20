@@ -37,7 +37,9 @@ userRouter.post("/", async (req: Request, res: Response) => {
 });
 
 userRouter.get("/", async (req: Request, res: Response) => {
-    res.status(200).json(await userController.getUsers());
+    const result = res.status(200).json(await userController.getUsers());
+    console.log('result -> ', result);
+    return result;
 });
 
 userRouter.post("/login", async (req: Request, res: Response) => {
@@ -101,7 +103,7 @@ userRouter.post("/todo", verifyToken, async (req: Request, res: Response) => {
     return res.status(200).json({ created: result });
 });
 
-userRouter.get("/todos", verifyToken, async (req: Request, res: Response) => {
+userRouter.post("/todos", verifyToken, async (req: Request, res: Response) => {
     const userId = (req as any).user.userId;
     const { todoListId } = req.body;
     const result = await userController.getTodosByUserAndTodoListName(

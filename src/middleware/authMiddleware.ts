@@ -2,7 +2,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
-// Verifique se o token é válido
 export function verifyToken(req: Request, res: Response, next: NextFunction) {
     const token = req.header('Authorization');
 

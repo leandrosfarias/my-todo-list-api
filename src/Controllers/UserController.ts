@@ -49,7 +49,8 @@ export class UserController {
     async getUsers() {
         return (
             (await db.query<IUser>(`
-        SELECT * FROM USERS;
+            SELECT id, name, done, todo_list_id, user_id
+            FROM public.todos;
         `)) as QueryResult
         ).rows;
     }
