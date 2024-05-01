@@ -1,14 +1,11 @@
-const express = require("express");
+import express from "express";
 import { Request, Response } from "express";
-import IUser from "../Models/User";
 import { UserController } from "../Controllers/UserController";
 import jwt from "jsonwebtoken";
-
 import { verifyToken } from "../middleware/authMiddleware";
 
 const userRouter = express.Router();
 const userController = new UserController();
-const users: IUser[] = [];
 
 userRouter.get("/table", async (req: Request, res: Response) => {
     const result = await userController.createTable();
@@ -68,11 +65,13 @@ userRouter.post(
         const userId = Number.parseInt(userInfo.userId);
         const { todoListName } = req.body;
         const result = await userController.createTodoList(userId, todoListName);
-        if (result) {
+        if (result instanceof String) {
             return res.status(201).json({
                 message: "Lista de tarefas criado com sucesso.",
                 todoListName: result,
             });
+        } else if (result instanceof Object) {
+            return res.status(200).json(result);
         } else {
             res
                 .status(500)
@@ -103,14 +102,17 @@ userRouter.post("/todo", verifyToken, async (req: Request, res: Response) => {
     return res.status(200).json({ created: result });
 });
 
-userRouter.post("/todos", verifyToken, async (req: Request, res: Response) => {
+userRouter.get("/todos/:todoListId", verifyToken, async (req: Request, res: Response) => {
     const userId = (req as any).user.userId;
-    const { todoListId } = req.body;
-    const result = await userController.getTodosByUserAndTodoListName(
+    const { todoListId } = req.params;
+    console.log("todoListId -> ", todoListId);
+    const result = await userController.getTodosByUserAndTodoListId(
         userId,
         Number.parseInt(todoListId)
     );
-    if (result) {
+    if (result instanceof Error) {
+        return res.status(500).send("Algo deu errado");
+    } else {
         return res.status(200).json(result);
     }
 });

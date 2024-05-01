@@ -18,7 +18,11 @@ export class UserController {
         return await db.query(query);
     }
 
-    async createUser(name: string, email: string, password: string) {
+    async createUser(
+        name: string,
+        email: string,
+        password: string
+    ): Promise<{ message: string; result: number } | { message: string }> {
         const userExist: boolean = await this.verirfyUserExist(email);
 
         if (userExist) return { message: "Email já cadastrado" };
@@ -28,10 +32,10 @@ export class UserController {
                 result: (await db.query(
                     `
         INSERT INTO users (name, email, password)
-        VALUES ($1, $2, $3) RETURNING name, email;
+        VALUES ($1, $2, $3) RETURNING id;
         `,
                     [name, email, await hashPassword(password)]
-                )) as any[],
+                )) as number[][0],
             };
             return queryResult;
         }
@@ -79,31 +83,31 @@ export class UserController {
         }
     }
 
-    async createTodoList(userId: number, todoListName: string) {
+    async createTodoList(userId: number, todoListName: string): Promise<{ id: number, name: string } | { message: string }> {
         const todoListNameExist = await this.verifyTodoListNameExist(
             userId,
             todoListName
         );
         console.log("todoListNameExist -> \n", todoListNameExist);
-        if (todoListNameExist) return false;
+        if (todoListNameExist) return { message: "Lista já existe" };
 
         const queryResult = (await db.query(
             `
         INSERT INTO todo_lists (user_id, name)
-        VALUES ($1, $2) RETURNING name;
+        VALUES ($1, $2) RETURNING id, name;
         `,
             [userId, todoListName]
         )) as any[];
         console.log("queryResult -> \n", queryResult);
-        return queryResult[0];
+        return queryResult[0] as { id: number, name: string };
     }
 
     async getTodoLists(userId: number): Promise<ITodoList[] | unknown> {
         return await db.query<ITodoList>(
-            `SELECT * FROM todo_lists 
+            `SELECT id, name FROM todo_lists 
         WHERE user_id = $1`,
             [userId]
-        );
+        ) as ITodoList[];
     }
 
     async createTodo(userId: number, todoListName: string, todoName: string) {
@@ -139,17 +143,24 @@ export class UserController {
         return false;
     }
 
-    async getTodosByUserAndTodoListName(
+    async getTodosByUserAndTodoListId(
         userId: number,
         todoListName: number
-    ): Promise<any[] | unknown> {
-        return (await db.query(
-            `
-        SELECT id, name, done FROM todos
-         WHERE user_id = $1 AND todo_list_id = $2;
-        `,
-            [userId, todoListName]
-        )) as any[];
+    ): Promise<ITodo[] | Error> {
+        try {
+            const result = (await db.query(
+                `
+            SELECT id, name, done FROM todos
+            WHERE user_id = $1 AND todo_list_id = $2;
+            `,
+                [userId, todoListName]
+            )) as ITodo[];
+            console.log("result -> ", result);
+            return result;
+        } catch (error) {
+            console.log("error -> ", error);
+            return new Error("Algo deu errado");
+        }
     }
 
     private async verifyTodoListNameExist(
@@ -157,14 +168,19 @@ export class UserController {
         todoListName: string
     ): Promise<boolean | undefined> {
         console.log("fui chamado com id de usuário ->", userId);
-        const todoListNameExist = (await db.query(
-            `
+        try {
+            const todoListNameExist = (await db.query(
+                `
         SELECT name FROM todo_lists WHERE name = $1 AND user_id = $2;
         `,
-            [todoListName, userId]
-        )) as any[];
+                [todoListName, userId]
+            )) as any[];
 
-        if (todoListNameExist.length > 0) return true;
-        return false;
+            if (todoListNameExist.length > 0) return true;
+            return false;
+        } catch (error) {
+            console.log("error -> ", error);
+            return undefined;
+        }
     }
 }
